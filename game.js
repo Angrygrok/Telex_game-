@@ -1,16 +1,11 @@
-// Phaser.js initial configuration
 const config = {
     type: Phaser.AUTO,
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 800,
-        height: 600
-    },
+    width: 800,
+    height: 600,
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 0 },
+            gravity: { y: 300 }, // Gravity effect
             debug: false
         }
     },
@@ -21,65 +16,62 @@ const config = {
     }
 };
 
-// Create a new game instance using the configuration
 const game = new Phaser.Game(config);
 
-let rocket, station;
-
 function preload() {
-    // Load game images
-    this.load.image('rocket', 'https://via.placeholder.com/60x30.png?text=ElonRocket');
-    this.load.image('station', 'https://via.placeholder.com/40x40.png?text=Station');
+    // Load the images for the game
+    this.load.image('background', 'https://via.placeholder.com/800x600.png?text=Background');
+    this.load.image('slingshot', 'https://via.placeholder.com/100x100.png?text=Slingshot');
+    this.load.image('bird', 'https://via.placeholder.com/40x40.png?text=Bird');
 }
 
 function create() {
     // Add background
-    this.add.rectangle(400, 300, 800, 600, 0x000033); // Game background
+    this.add.image(400, 300, 'background');
 
-    // Create rocket
-    rocket = this.physics.add.sprite(100, 300, 'rocket').setCollideWorldBounds(true);
+    // Create slingshot (the launcher)
+    this.slingshot = this.add.sprite(150, 450, 'slingshot');
 
-    // Create station
-    station = this.physics.add.staticGroup();
-    station.create(600, 500, 'station');
+    // Create bird that will be launched
+    this.bird = this.physics.add.sprite(150, 450, 'bird');
+    this.bird.setCollideWorldBounds(true);
+    this.bird.setBounce(0.8);
+    this.bird.setDrag(0.98); // Bird's drag, it will slow down over time
 
-    // Collide rocket with station
-    this.physics.add.collider(rocket, station, hitStation, null, this);
-
-    // Rocket movement controls
+    // Add events for dragging and launching
     this.input.on('pointerdown', startDrag, this);
-    this.input.on('pointermove', dragRocket, this);
-    this.input.on('pointerup', launchRocket, this);
+    this.input.on('pointermove', dragBird, this);
+    this.input.on('pointerup', launchBird, this);
 }
 
-// Start dragging the rocket on mouse down
-function startDrag(pointer) {
-    if (!rocket.body.enable) return;
-    rocket.setPosition(pointer.x, pointer.y);
-}
-
-// Drag rocket to new position
-function dragRocket(pointer) {
-    rocket.setPosition(pointer.x, pointer.y);
-}
-
-// Launch rocket towards the station
-function launchRocket() {
-    let dx = 600 - rocket.x;
-    let dy = 500 - rocket.y;
-    rocket.setVelocity(dx * 0.1, dy * 0.1);
-}
-
-// When rocket hits the station
-function hitStation(rocket, station) {
-    rocket.setPosition(100, 300);
-    station.destroy();
-    console.log("Station hit!");
-}
-
-// Update function (reset rocket if it goes off-screen)
 function update() {
-    if (rocket.y > 600 || rocket.x > 800 || rocket.x < 0) {
-        rocket.setPosition(100, 300);
+    // Reset bird if it goes off screen
+    if (this.bird.x < 0 || this.bird.x > 800 || this.bird.y > 600) {
+        this.bird.setPosition(150, 450);
+        this.bird.setVelocity(0, 0);
+    }
+}
+
+let isDragging = false;
+
+function startDrag(pointer) {
+    isDragging = true;
+}
+
+function dragBird(pointer) {
+    if (isDragging) {
+        // Drag the bird inside the slingshot limits
+        this.bird.x = Phaser.Math.Clamp(pointer.x, 100, 200);
+        this.bird.y = Phaser.Math.Clamp(pointer.y, 400, 500);
+    }
+}
+
+function launchBird() {
+    if (isDragging) {
+        isDragging = false;
+        // Launch the bird by setting its velocity based on the drag distance
+        let dx = 150 - this.bird.x;
+        let dy = 450 - this.bird.y;
+        this.bird.setVelocity(dx * 5, dy * 5); // Adjust the multiplier for more power
     }
 }
